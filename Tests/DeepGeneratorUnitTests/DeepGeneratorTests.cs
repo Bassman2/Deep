@@ -1,14 +1,13 @@
 ﻿//#pragma warning disable IDE0017 
 
-using ObservableModelGeneratorUnitTests.Models;
-using ObservableModelGeneratorUnitTests.ViewModels;
 
 
-namespace ObservableModelGeneratorUnitTests;
+namespace DeepGeneratorUnitTests;
 
 [TestClass]
-public sealed class ObservableModelGeneratorTests
+public sealed class DeepGeneratorTests
 {
+    /*
     #region Simple
 
     readonly string Name = "New Name";
@@ -266,5 +265,6 @@ public sealed class ObservableModelGeneratorTests
     }
 
     #endregion
+    */
 }
 

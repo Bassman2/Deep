@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-    <id>Deep</id>
-    <version>0.1.0</version>
-    <title>Deep</title>
+    <id>DeepExtensions</id>
+    <version>0.0.0</version>
+    <title>DeepExtensions</title>
     <authors>Ralf Beckers</authors>
     <owners>Ralf Beckers</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>

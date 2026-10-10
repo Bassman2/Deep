@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Xml.Linq;
 
-namespace MvvmToolbox.SourceGenerators;
+namespace Deep.SourceGenerators;
 
-partial class ObservableModelGenerator
+partial class DeepGenerator
 {
     public string AssemblyName => Compilation.AssemblyName ?? "";
 

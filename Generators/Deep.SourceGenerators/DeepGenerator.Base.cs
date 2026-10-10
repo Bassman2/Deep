@@ -8,10 +8,10 @@ using System.Linq;
 using System.Text;
 
 
-namespace MvvmToolbox.SourceGenerators;
+namespace Deep.SourceGenerators;
 
 [Generator(LanguageNames.CSharp)]
-public partial class ObservableModelGenerator : IIncrementalGenerator
+public partial class DeepGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {

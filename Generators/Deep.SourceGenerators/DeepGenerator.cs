@@ -3,11 +3,10 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using static MvvmToolbox.SourceGenerators.ObservableModelGenerator;
 
-namespace MvvmToolbox.SourceGenerators;
+namespace Deep.SourceGenerators;
 
-partial class ObservableModelGenerator 
+partial class DeepGenerator 
 {
     private const string ObservableModelObjectAttributeName = "MvvmToolbox.ComponentModel.ObservableModelObjectAttribute";
     private const string ObservableModelPropertyAttributeName = "MvvmToolbox.ComponentModel.ObservableModelPropertyAttribute";

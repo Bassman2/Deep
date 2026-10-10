@@ -1,9 +1,9 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace MvvmToolbox.SourceGenerators;
+namespace Deep.SourceGenerators;
 
-partial class ObservableModelGenerator
+partial class DeepGenerator
 {
 
     // Einfacher Fehler ohne direkten Codebezug

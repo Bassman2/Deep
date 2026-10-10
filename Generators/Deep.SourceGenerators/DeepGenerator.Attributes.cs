@@ -1,49 +1,21 @@
 ﻿using Microsoft.CodeAnalysis;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace MvvmToolbox.SourceGenerators;
+namespace Deep.SourceGenerators;
 
-partial class ObservableModelGenerator
+partial class DeepGenerator
 {
     protected void CreateAttributes(IncrementalGeneratorPostInitializationContext context)
     {
         context.AddSource($"ObservableModelAttributes.g.cs",
             """
-            #nullable enable
+            namespace Deep;
 
-            namespace MvvmToolbox.ComponentModel;
+            public enum DeepType { All, Copy, Equal };
 
             [AttributeUsage(AttributeTargets.Class)]
-            public class ObservableModelObjectAttribute(Type modelType): Attribute
+            public class DeepAttribute(DeepType deepType = DeepType.All): Attribute
             { 
-                public Type ModelType { get; } = modelType;
-            }
-
-            [AttributeUsage(AttributeTargets.Property)]
-            public class ObservableModelPropertyAttribute : Attribute
-            { 
-                public ObservableModelPropertyAttribute()
-                { }
-
-                public ObservableModelPropertyAttribute(string modelPropertyName)
-                {
-                    ModelPropertyName = modelPropertyName;
-                }
-
-                public string? ModelPropertyName { get; } = null; 
-                public string? Converter { get; init; } = null;
-                public Type? ConverterType { get; init; } = null;
-            }
-
-            public interface IPropertyConverter
-            {
-                // From Model to ViewModel
-                object Convert(object value);
-
-                // From ViewModel to Model
-                object ConvertBack(object value);
+                public DeepType DeepType { get; } = modelType;
             }
             """);
     }

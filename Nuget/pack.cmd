@@ -1,1 +1,1 @@
-nuget pack MvvmToolbox.nuspec -properties Configuration=Release
+nuget pack Deep.nuspec -properties Configuration=Release

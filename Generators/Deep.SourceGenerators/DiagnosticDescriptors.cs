@@ -1,6 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 
-namespace MvvmToolbox.SourceGenerators;
+namespace Deep.SourceGenerators;
 
 public static class DiagnosticDescriptors
 {

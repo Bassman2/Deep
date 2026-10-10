@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace MvvmToolbox.SourceGenerators;
+namespace Deep.SourceGenerators;
 
-partial class ObservableModelGenerator
+partial class DeepGenerator
 {
     
     protected void CreateDebug()

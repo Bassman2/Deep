@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/Generators/">
+    <Project Path="Generators/Deep.SourceGenerators/Deep.SourceGenerators.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/DeepGeneratorUnitTests/DeepGeneratorUnitTests.csproj" />
+    <Project Path="Tests/NugetTest/NugetTest.csproj" Id="eadb532d-97fc-48a7-87e9-ec068d76cfd1" />
+  </Folder>
+</Solution>

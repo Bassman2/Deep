@@ -1,0 +1,351 @@
+﻿using Microsoft.CodeAnalysis;
+using System;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using static MvvmToolbox.SourceGenerators.ObservableModelGenerator;
+
+namespace MvvmToolbox.SourceGenerators;
+
+partial class ObservableModelGenerator 
+{
+    private const string ObservableModelObjectAttributeName = "MvvmToolbox.ComponentModel.ObservableModelObjectAttribute";
+    private const string ObservableModelPropertyAttributeName = "MvvmToolbox.ComponentModel.ObservableModelPropertyAttribute";
+
+    private INamedTypeSymbol? ObservableModelObjectAttribute;
+    private INamedTypeSymbol? ObservableModelPropertyAttribute;
+
+    public void Execute()
+    {
+
+        ObservableModelObjectAttribute = Compilation.GetTypeByMetadataName(ObservableModelObjectAttributeName);
+        ObservableModelPropertyAttribute = Compilation.GetTypeByMetadataName(ObservableModelPropertyAttributeName);
+
+        //Location errorLocation = propertySyntax.GetLocation();
+        //string propertyName = propertySyntax.Identifier.Text;
+
+        //Diagnostic diagnostic = Diagnostic.Create(GeneratorDiagnostics.InvalidPropertyError, errorLocation, propertyName);  // Befüllt das '{0}' im messageFormat
+        //Context.ReportDiagnostic(diagnostic);
+
+        //ReportError("Test");
+
+        //Debugger.Launch();
+
+        CreateDebug();
+
+        // get all classes with [ObservableModelObjectAttribute] 
+        foreach (var cl in GetAllClassesWithAttribute(ObservableModelObjectAttribute!))
+        {
+            CreateClassFile(cl);
+        }
+    }
+    
+    private string debugString = string.Empty;
+
+    public enum DataType { Error, Simple, Model, List, ModelList, ConverterFunc, ConverterClass }
+
+    public DataType GetDataType(IPropertySymbol prop, AttributeData propAttr)
+    {
+        if (HasNamedArgument(propAttr,"Converter"))
+        {
+            return DataType.ConverterFunc;
+        }
+        else if (HasNamedArgument(propAttr, "ConverterType"))
+        {
+            return DataType.ConverterClass;
+        }
+        else if (IsObservableCollection(prop.Type))
+        {
+            var innerType = GetInnerType(prop.Type)!;
+            if (ImplementsInterface(innerType, "System.ComponentModel.INotifyPropertyChanged"))
+            {
+                // type is a ViewModel type, because it implements INotifyPropertyChanged
+                return DataType.ModelList;
+            }
+            else
+            {
+                return DataType.List;
+            }
+        }
+        else
+        {
+            if (ImplementsInterface(prop.Type, "System.ComponentModel.INotifyPropertyChanged"))
+            {
+                return DataType.Model;
+            }
+            else
+            {
+                return DataType.Simple;
+            }
+        }
+    }
+
+    public struct PropertyData
+    {
+        public DataType DataType { get; set; }
+        public string ViewModelPropertyName { get; set; }
+        public string ViewModelPropertyType { get; set; }
+        public string ModelPropertyName { get; set; }
+        public string ModelPropertyType { get; set; }
+        public string? Converter { get; set; }
+    }
+
+    private PropertyData FindData(IPropertySymbol prop, AttributeData propAttr, INamedTypeSymbol? modelSymbol)
+    {
+        DataType dataType = GetDataType(prop, propAttr);
+        string viewModelPropertyName = prop.Name;
+        string viewModelPropertyType = IsObservableCollection(prop.Type) ? GetInnerType(prop.Type)!.ToDisplayString() : prop.Type.ToDisplayString(); 
+
+        string modelPropertyName = propAttr.ConstructorArguments.FirstOrDefault().Value?.ToString() ?? prop.Name;
+        //string modelPropertyType = modelSymbol?.GetMembers(modelPropertyName).OfType<IPropertySymbol>().FirstOrDefault()?.Type.ToDisplayString()!;
+        string modelPropertyType = GetPropertyTypeRecursive(modelSymbol!, modelPropertyName);
+            
+        string test = modelSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "null";
+        debugString += $"\r\n    //{modelPropertyName} = {modelPropertyType} -------- {test}";
+
+        string? converterName = GetNamedArgument(propAttr, "Converter")?.Value.Value as string ?? null;
+        string? converterClassName = null; // = GetNamedArgument(propAttr, "ConverterType")?.Value.ToString() ?? null;
+
+        var converterArgument = GetNamedArgument(propAttr, "ConverterType");
+        if (converterArgument.HasValue && converterArgument.Value.Value.Value is ITypeSymbol typeSymbol)
+        {
+            // 3. Den vollständig qualifizierten Namen ermitteln
+            converterClassName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        }
+
+        return new PropertyData
+        {
+            DataType = dataType,
+            ViewModelPropertyName = viewModelPropertyName,
+            ViewModelPropertyType = viewModelPropertyType,
+            ModelPropertyName = modelPropertyName,
+            ModelPropertyType = modelPropertyType,
+            Converter = converterName ?? converterClassName
+        };
+    }
+
+    private void CreateClassFile(INamedTypeSymbol cl)
+    {
+        var attr = GetAttribute(cl, ObservableModelObjectAttribute!);
+        
+        string modelType = attr != null ? attr.ConstructorArguments.FirstOrDefault().Value?.ToString() ?? "" : string.Empty;
+        INamedTypeSymbol? modelSymbol = Compilation.GetTypeByMetadataName(modelType);
+
+        string test = modelSymbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "null"; 
+
+        string classNamespace = cl.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+
+        StringBuilder sb = new(
+            $$"""
+            // <auto-generated />
+
+            // *** {{test}}
+
+            #nullable enable annotations
+            #nullable disable warnings
+
+            // Suppress warnings about [Obsolete] member usage in generated code.
+            #pragma warning disable CS0612, CS0618
+            
+            namespace {{classNamespace}};
+
+            partial class {{cl.Name}}
+            {
+                public readonly {{modelType}} Model;
+                
+                public {{cl.Name}}({{modelType}} model)
+                {
+                    Model = model;
+
+            """);
+
+        foreach (var prop in GetProperties(cl))
+        {
+            var propAttr = GetAttribute(prop, ObservableModelPropertyAttribute!);
+            if (propAttr != null)
+            {
+                PropertyData propertyData = FindData(prop, propAttr, modelSymbol);
+                sb.AppendLine(CreateConstructorLine(propertyData));
+            }
+        }
+
+        sb.AppendLine(
+            """
+                }
+
+            """);
+
+        foreach (var prop in GetProperties(cl))
+        {
+            var propAttr = GetAttribute(prop, ObservableModelPropertyAttribute!);
+            if (propAttr != null)
+            {
+                PropertyData propertyData = FindData(prop, propAttr, modelSymbol);
+                sb.AppendLine(CreateSetterMethods(propertyData));
+            }
+        }
+
+        sb.AppendLine($"    // ## {debugString}");
+
+        sb.AppendLine(
+            """
+            }
+            """);
+        AddSource($"{cl.Name}.g.cs", sb.ToString());
+    }
+
+    
+   
+    public string CreateConstructorLine(PropertyData propertyData)
+    {
+        return $"        // {propertyData.DataType}: vmName: {propertyData.ViewModelPropertyName} vmType: {propertyData.ViewModelPropertyType.TrimEnd('?')} mName: {propertyData.ModelPropertyName} mType: {propertyData.ModelPropertyType.TrimEnd('?')} converter: {propertyData.Converter}\r\n" +
+            propertyData.DataType switch
+            {
+                DataType.Error => string.Empty,
+                DataType.Simple =>
+                    $"        {propertyData.ViewModelPropertyName} = model.{propertyData.ModelPropertyName};",
+                DataType.Model =>
+                    $"        {propertyData.ViewModelPropertyName} = model.{propertyData.ModelPropertyName} != null ? new {propertyData.ViewModelPropertyType.TrimEnd('?')}(model.{propertyData.ModelPropertyName}) : new {propertyData.ViewModelPropertyType.TrimEnd('?')}(new ());",
+                DataType.List =>
+                    $$"""
+                            {{propertyData.ViewModelPropertyName}} = [.. model.{{propertyData.ModelPropertyName}}];
+                            {{propertyData.ViewModelPropertyName}}.CollectionChanged += On{{propertyData.ViewModelPropertyName}}CollectionChanged;
+                    """,
+                DataType.ModelList =>
+                    $$"""
+                            {{propertyData.ViewModelPropertyName}} = [.. (model.{{propertyData.ModelPropertyName}} ?? []).Select(m => new {{propertyData.ViewModelPropertyType.TrimEnd('?')}}(m))];
+                            {{propertyData.ViewModelPropertyName}}.CollectionChanged += On{{propertyData.ViewModelPropertyName}}CollectionChanged;
+                    """,
+                DataType.ConverterFunc =>
+                    $"        {propertyData.ViewModelPropertyName} = Get{propertyData.Converter}(model.{propertyData.ModelPropertyName});",
+                DataType.ConverterClass =>
+                    $"        {propertyData.ViewModelPropertyName} = ({propertyData.ViewModelPropertyType.TrimEnd('?')})(new {propertyData.Converter}()).Convert(model.{propertyData.ModelPropertyName});",
+                _ => throw new ArgumentOutOfRangeException(nameof(propertyData.DataType), propertyData.DataType, null)
+            };
+    }
+
+    public string CreateSetterMethods(PropertyData propertyData)
+    {
+        return $"    // {propertyData.DataType}: vmName: {propertyData.ViewModelPropertyName} vmType: {propertyData.ViewModelPropertyType} mName: {propertyData.ModelPropertyName} mType: {propertyData.ModelPropertyType} converter: {propertyData.Converter}\r\n" +
+            propertyData.DataType switch
+            {
+                DataType.Error => string.Empty,
+                DataType.Simple =>
+                    $$"""
+                        partial void On{{propertyData.ViewModelPropertyName}}Changed({{propertyData.ViewModelPropertyType}} value)
+                        {
+                            Model.{{propertyData.ModelPropertyName}} = value;
+                        }
+
+                    """,
+                DataType.Model =>
+                    $$"""
+                        partial void On{{propertyData.ViewModelPropertyName}}Changed({{propertyData.ViewModelPropertyType}} value)
+                        {
+                            Model.{{propertyData.ModelPropertyName}} = value.Model;
+                        }
+
+                    """,
+                DataType.List =>
+                    $$"""
+                        private void On{{propertyData.ViewModelPropertyName}}CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+                        {
+                            Model.{{propertyData.ModelPropertyName}} ??= [];
+                            switch (e.Action)
+                            {
+                            case System.Collections.Specialized.NotifyCollectionChangedAction.Add when e.NewItems != null:
+                                int index = e.NewStartingIndex;
+                                foreach ({{propertyData.ViewModelPropertyType}} item in e.NewItems)
+                                {
+                                    Model.{{propertyData.ModelPropertyName}}.Insert(index++, item);
+                                }
+                                break;
+                            case System.Collections.Specialized.NotifyCollectionChangedAction.Remove when e.OldItems != null:
+                                foreach ({{propertyData.ViewModelPropertyType}} item in e.OldItems)
+                                {
+                                     Model.{{propertyData.ModelPropertyName}}.Remove(item);
+                                }
+                                break;
+                            case System.Collections.Specialized.NotifyCollectionChangedAction.Move:
+                                var modelToMove =  Model.{{propertyData.ModelPropertyName}}[e.OldStartingIndex];
+                                Model.{{propertyData.ModelPropertyName}}.RemoveAt(e.OldStartingIndex);
+                                Model.{{propertyData.ModelPropertyName}}.Insert(e.NewStartingIndex, modelToMove);
+                                break;
+                            case System.Collections.Specialized.NotifyCollectionChangedAction.Replace when e.NewItems != null:
+                                int replaceIndex = e.NewStartingIndex;
+                                foreach ({{propertyData.ViewModelPropertyType}} item in e.NewItems)
+                                {
+                                    Model.{{propertyData.ModelPropertyName}}[replaceIndex++] = item;
+                                }
+                                break;
+                            case System.Collections.Specialized.NotifyCollectionChangedAction.Reset:
+                                Model.{{propertyData.ModelPropertyName}}.Clear();
+                                foreach ({{propertyData.ViewModelPropertyType}} item in {{propertyData.ViewModelPropertyName}})
+                                {
+                                    Model.{{propertyData.ModelPropertyName}}.Add(item);
+                                }
+                                break;
+                            }   
+                        }
+                     """,
+                DataType.ModelList =>
+                    $$"""
+                         private void On{{propertyData.ViewModelPropertyName}}CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+                         {
+                            Model.{{propertyData.ModelPropertyName}} ??= [];
+                             switch (e.Action)
+                             {
+                             case System.Collections.Specialized.NotifyCollectionChangedAction.Add when e.NewItems != null:
+                                 int index = e.NewStartingIndex;
+                                 foreach ({{propertyData.ViewModelPropertyType}} vm in e.NewItems)
+                                 {
+                                     Model.{{propertyData.ModelPropertyName}}.Insert(index++, vm.Model);
+                                 }
+                                 break;
+                             case System.Collections.Specialized.NotifyCollectionChangedAction.Remove when e.OldItems != null:
+                                 foreach ({{propertyData.ViewModelPropertyType}} vm in e.OldItems)
+                                 {
+                                      Model.{{propertyData.ModelPropertyName}}.Remove(vm.Model);
+                                 }
+                                 break;
+                             case System.Collections.Specialized.NotifyCollectionChangedAction.Move:
+                                 var modelToMove =  Model.{{propertyData.ModelPropertyName}}[e.OldStartingIndex];
+                                 Model.{{propertyData.ModelPropertyName}}.RemoveAt(e.OldStartingIndex);
+                                 Model.{{propertyData.ModelPropertyName}}.Insert(e.NewStartingIndex, modelToMove);
+                                 break;
+                             case System.Collections.Specialized.NotifyCollectionChangedAction.Replace when e.NewItems != null:
+                                 int replaceIndex = e.NewStartingIndex;
+                                 foreach ({{propertyData.ViewModelPropertyType}} vm in e.NewItems)
+                                 {
+                                     Model.{{propertyData.ModelPropertyName}}[replaceIndex++] = vm.Model;
+                                 }
+                                 break;
+                             case System.Collections.Specialized.NotifyCollectionChangedAction.Reset:
+                                 Model.{{propertyData.ModelPropertyName}}.Clear();
+                                 foreach ({{propertyData.ViewModelPropertyType}} vm in {{propertyData.ViewModelPropertyName}})
+                                 {
+                                     Model.{{propertyData.ModelPropertyName}}.Add(vm.Model);
+                                 }
+                                 break;
+                             }   
+                         }
+                     """,
+                DataType.ConverterFunc =>
+                    $$"""
+                        partial void On{{propertyData.ViewModelPropertyName}}Changed({{propertyData.ViewModelPropertyType}} value)
+                        {
+                            Model.{{propertyData.ModelPropertyName}} = Set{{propertyData.Converter}}(value);
+                        }
+                    """,
+                DataType.ConverterClass =>
+                    $$"""
+                        partial void On{{propertyData.ViewModelPropertyName}}Changed({{propertyData.ViewModelPropertyType}} value)
+                        {
+                            Model.{{propertyData.ModelPropertyName}} = ({{propertyData.ModelPropertyType}})new {{propertyData.Converter}}().ConvertBack({{propertyData.ViewModelPropertyName}});
+                        }
+                    """,
+                _ => throw new ArgumentOutOfRangeException(nameof(propertyData.DataType), propertyData.DataType, null)
+            };
+    }
+   
+}

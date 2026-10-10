@@ -1,1 +1,1 @@
-nuget pack Deep.nuspec -properties Configuration=Release
+nuget pack DeepExtensions.nuspec -properties Configuration=Release

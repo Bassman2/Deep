@@ -2,25 +2,25 @@
 <package >
   <metadata>
     <id>DeepExtensions</id>
-    <version>0.0.0</version>
+    <version>0.1.0</version>
     <title>DeepExtensions</title>
     <authors>Ralf Beckers</authors>
     <owners>Ralf Beckers</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">MIT</license>
     <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
-    <projectUrl>https://github.com/Bassman2/Deep</projectUrl>
+    <projectUrl>https://github.com/Bassman2/DeepExtensions</projectUrl>
     <description>DeepCode and DeepEqual Generator</description>
     <releaseNotes>Creation</releaseNotes>
     <copyright>Copyright 2026 (c) by Ralf Beckers</copyright>
-    <repository type="git" url="https://github.com/Bassman2/Deep" />
+    <repository type="git" url="https://github.com/Bassman2/DeepExtensions" />
     <tags>DeepCopy DeepComapre DeepEqual</tags>
     <readme>docs\README.md</readme>
 	<dependencies/>
   </metadata>
   
   <files>
-    <file src="..\Generators\Deep.SourceGenerators\bin\Release\netstandard2.0\Deep.SourceGenerators.dll" target="analyzers\dotnet\cs" />
+    <file src="..\Generators\DeepExtensions.SourceGenerators\bin\Release\netstandard2.0\DeepExtensions.SourceGenerators.dll" target="analyzers\dotnet\cs" />
     <file src="..\README.md" target="docs\" />
     <file src="..\LICENSE*" target="content" />
   </files>
